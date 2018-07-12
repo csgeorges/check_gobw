@@ -159,6 +159,6 @@ func Vsize(bytes uint64, delta float64) (ret string) {
 		s = "T"
 
 	}
-	ret = fmt.Sprintf("%.2f%sbps", tmp, s)
+	ret = fmt.Sprintf("%.2f%sBps", tmp, s)
 	return
 }
