@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"math"
 	"time"
 
 	"bufio"
@@ -179,37 +180,46 @@ func main() {
 func Vsize(bytes uint64, delta float64) (ret string) {
 	var tmp float64
 	var suffix string
+	var s string
+
 	if *B {
 		tmp = float64(bytes) / delta
 		suffix = "Byte"
+		b := uint64(tmp)
+		switch {
+		case b < uint64(2<<9):
+		case b < uint64(2<<19):
+			tmp = tmp / float64(2<<9)
+			s = "K"
+		case b < uint64(2<<29):
+			tmp = tmp / float64(2<<19)
+			s = "M"
+		case b < uint64(2<<39):
+			tmp = tmp / float64(2<<29)
+			s = "G"
+		case b < uint64(2<<49):
+			tmp = tmp / float64(2<<39)
+			s = "T"
+		}
 	} else {
 		tmp = float64(bytes*8) / delta
 		suffix = "bit"
-	}
-
-	var s string
-
-	b := uint64(tmp)
-
-	switch {
-	case b < uint64(2<<9):
-
-	case b < uint64(2<<19):
-		tmp = tmp / float64(2<<9)
-		s = "K"
-
-	case b < uint64(2<<29):
-		tmp = tmp / float64(2<<19)
-		s = "M"
-
-	case b < uint64(2<<39):
-		tmp = tmp / float64(2<<29)
-		s = "G"
-
-	case b < uint64(2<<49):
-		tmp = tmp / float64(2<<39)
-		s = "T"
-
+		b := tmp
+		switch {
+		case b < math.Pow10(3):
+		case b < math.Pow10(6):
+			tmp = tmp / math.Pow10(3)
+			s = "K"
+		case b < math.Pow10(9):
+			tmp = tmp / math.Pow10(6)
+			s = "M"
+		case b < math.Pow10(12):
+			tmp = tmp / math.Pow10(9)
+			s = "G"
+		case b < math.Pow10(15):
+			tmp = tmp / math.Pow10(12)
+			s = "T"
+		}
 	}
 	ret = fmt.Sprintf("%.2f%s%s/s", tmp, s, suffix)
 	return
