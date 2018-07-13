@@ -154,9 +154,9 @@ func main() {
 	for k, iface := range delta.Dev {
 		stat := delta.Stat[iface]
 		if k == totaldevs {
-			fmt.Printf("%v_Rx=%v[B];%v;%v;; %v_Tx=%v[B];%v;%v;;", iface, stat.Rbps, *W, *C, iface, stat.Tbps, *W, *C)
+			fmt.Printf("%v_Rx=%vb/s;%v;%v;; %v_Tx=%vb/s;%v;%v;;", iface, stat.Rbps, *W, *C, iface, stat.Tbps, *W, *C)
 		} else {
-			fmt.Printf("%v_Rx=%v[B];%v;%v;; %v_Tx=%v[B];%v;%v;; ", iface, stat.Rbps, *W, *C, iface, stat.Tbps, *W, *C)
+			fmt.Printf("%v_Rx=%vb/s;%v;%v;; %v_Tx=%vb/s;%v;%v;; ", iface, stat.Rbps, *W, *C, iface, stat.Tbps, *W, *C)
 		}
 	}
 
