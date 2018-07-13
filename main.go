@@ -23,11 +23,11 @@ type NetStat struct {
 }
 
 type DevStat struct {
-	Name string
-	Rx   uint64
-	Tx   uint64
-	Rbps int
-	Tbps int
+	Name    string
+	Rx      uint64
+	Tx      uint64
+	RByteps uint64
+	TByteps uint64
 }
 
 func ReadLines(filename string) ([]string, error) {
@@ -117,8 +117,8 @@ func main() {
 			t1, ok := stat1.Stat[value]
 			dev.Rx = t1.Rx - t0.Rx
 			dev.Tx = t1.Tx - t0.Tx
-			dev.Rbps = int(float64(dev.Rx) / sleepfloat)
-			dev.Tbps = int(float64(dev.Tx) / sleepfloat)
+			dev.RByteps = uint64(float64(dev.Rx) / sleepfloat)
+			dev.TByteps = uint64(float64(dev.Tx) / sleepfloat)
 		}
 	}
 
@@ -128,10 +128,10 @@ func main() {
 	exitcode := 0
 	for _, iface := range delta.Dev {
 		stat := delta.Stat[iface]
-		if stat.Rbps > *C || stat.Tbps > *C {
+		if int(stat.RByteps) > *C || int(stat.TByteps) > *C {
 			status = "CRITICAL"
 			exitcode = 2
-		} else if stat.Rbps > *W || stat.Tbps > *W {
+		} else if int(stat.RByteps) > *W || int(stat.TByteps) > *W {
 			if status == "OK" {
 				status = "WARNING"
 				exitcode = 1
@@ -154,9 +154,9 @@ func main() {
 	for k, iface := range delta.Dev {
 		stat := delta.Stat[iface]
 		if k == totaldevs {
-			fmt.Printf("%v_Rx=%vb/s;%v;%v;; %v_Tx=%vb/s;%v;%v;;", iface, stat.Rbps, *W, *C, iface, stat.Tbps, *W, *C)
+			fmt.Printf("%v_Rx=%vB/s;%v;%v;; %v_Tx=%vB/s;%v;%v;;", iface, stat.RByteps, *W, *C, iface, stat.TByteps, *W, *C)
 		} else {
-			fmt.Printf("%v_Rx=%vb/s;%v;%v;; %v_Tx=%vb/s;%v;%v;; ", iface, stat.Rbps, *W, *C, iface, stat.Tbps, *W, *C)
+			fmt.Printf("%v_Rx=%vB/s;%v;%v;; %v_Tx=%vB/s;%v;%v;; ", iface, stat.RByteps, *W, *C, iface, stat.TByteps, *W, *C)
 		}
 	}
 
@@ -201,6 +201,6 @@ func Vsize(bytes uint64, delta float64) (ret string) {
 		s = "T"
 
 	}
-	ret = fmt.Sprintf("%.2f%sbyte/s", tmp, s)
+	ret = fmt.Sprintf("%.2f%sByte/s", tmp, s)
 	return
 }
