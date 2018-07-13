@@ -11,10 +11,11 @@ import (
 	"strings"
 )
 
-var W = flag.Int("w", 50000, "warning limit in bytes")
-var C = flag.Int("c", 100000, "critical limit in bytes")
-var S = flag.Duration("s", 5*time.Second, "sleep time in seconds")
+var W = flag.Int("w", 5000000, "warning limit in bytes")
+var C = flag.Int("c", 10000000, "critical limit in bytes")
+var Sleep = flag.Duration("s", 10*time.Second, "sleep time in seconds")
 var Inter = flag.String("i", "*", "interface")
+var Stats = flag.Bool("S", false, "runtime stats for debugging")
 
 type NetStat struct {
 	Dev  []string
@@ -25,6 +26,8 @@ type DevStat struct {
 	Name string
 	Rx   uint64
 	Tx   uint64
+	Rbps int
+	Tbps int
 }
 
 func ReadLines(filename string) ([]string, error) {
@@ -95,12 +98,12 @@ func main() {
 	delta.Dev = make([]string, 0)
 	delta.Stat = make(map[string]*DevStat)
 
-	//start := time.Now()
+	start := time.Now()
 
 	stat0 = getStats()
-	time.Sleep(*S)
+	time.Sleep(*Sleep)
 	stat1 = getStats()
-	sleepfloat := time.Duration.Seconds(*S)
+	sleepfloat := time.Duration.Seconds(*Sleep)
 
 	for _, value := range stat0.Dev {
 		t0, ok := stat0.Stat[value]
@@ -114,28 +117,67 @@ func main() {
 			t1, ok := stat1.Stat[value]
 			dev.Rx = t1.Rx - t0.Rx
 			dev.Tx = t1.Tx - t0.Tx
-			//fmt.Printf("t0: %v\n", t0)
-			//fmt.Printf("t1: %v\n", t1)
-			//fmt.Printf("%v\n", sleeptime)
-			//fmt.Printf("Rx: %v\n", Vsize(dev.Rx, sleepfloat))
-			//fmt.Printf("Tx: %v\n", Vsize(dev.Tx, sleepfloat))
+			dev.Rbps = int(float64(dev.Rx) / sleepfloat)
+			dev.Tbps = int(float64(dev.Tx) / sleepfloat)
 		}
 	}
 
+	totaldevs := len(delta.Dev) - 1
+
+	status := "OK"
+	exitcode := 0
 	for _, iface := range delta.Dev {
 		stat := delta.Stat[iface]
-		fmt.Printf("%v(Rx:%v/Tx:%v)|%v|%v\n", iface, Vsize(stat.Rx, sleepfloat), Vsize(stat.Tx, sleepfloat), stat.Rx, stat.Tx)
+		if stat.Rbps > *C || stat.Tbps > *C {
+			status = "CRITICAL"
+			exitcode = 2
+		} else if stat.Rbps > *W || stat.Tbps > *W {
+			if status == "OK" {
+				status = "WARNING"
+				exitcode = 1
+			}
+		}
+	}
+	fmt.Printf("BANDWIDTH %v: ", status)
+
+	for k, iface := range delta.Dev {
+		stat := delta.Stat[iface]
+		if k == totaldevs {
+			fmt.Printf("%v(Rx %v Tx %v)", iface, Vsize(stat.Rx, sleepfloat), Vsize(stat.Tx, sleepfloat))
+		} else {
+			fmt.Printf("%v(Rx %v Tx %v) ", iface, Vsize(stat.Rx, sleepfloat), Vsize(stat.Tx, sleepfloat))
+		}
 	}
 
-	//elapsed := time.Since(start)
-	//fmt.Printf("%v\n", stat0)
-	//fmt.Printf("%v\n", stat1)
-	//fmt.Printf("Start: %v\nElapsed: %v\n", start, elapsed)
+	fmt.Printf(";|")
+
+	for k, iface := range delta.Dev {
+		stat := delta.Stat[iface]
+		if k == totaldevs {
+			fmt.Printf("%v_Rx=%v;%v;%v; %v_Tx=%v;%v;%v;", iface, stat.Rbps, *W, *C, iface, stat.Tbps, *W, *C)
+		} else {
+			fmt.Printf("%v_Rx=%v;%v;%v; %v_Tx=%v;%v;%v; ", iface, stat.Rbps, *W, *C, iface, stat.Tbps, *W, *C)
+		}
+	}
+
+	fmt.Printf("\n")
+
+	elapsed := time.Since(start)
+	if *Stats {
+		overhead := elapsed - *Sleep
+		fmt.Printf("\n")
+		fmt.Printf("%10s: %v\n", "Start", start)
+		fmt.Printf("%10s: %v\n", "Elapsed", elapsed)
+		fmt.Printf("%10s: %v\n", "Sleep", *Sleep)
+		fmt.Printf("%10s: %v\n", "Overhead", overhead)
+		fmt.Printf("%10s: %v\n", "Devices", totaldevs+1)
+	}
+	os.Exit(exitcode)
 }
 
 func Vsize(bytes uint64, delta float64) (ret string) {
 	var tmp float64 = float64(bytes) / delta
-	var s string = ""
+	var s string
 
 	bytes = uint64(tmp)
 
@@ -159,6 +201,6 @@ func Vsize(bytes uint64, delta float64) (ret string) {
 		s = "T"
 
 	}
-	ret = fmt.Sprintf("%.2f%sBps", tmp, s)
+	ret = fmt.Sprintf("%.2f%sbyte/s", tmp, s)
 	return
 }
