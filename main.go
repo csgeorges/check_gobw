@@ -16,6 +16,7 @@ var C = flag.Int("c", 10000000, "critical limit in bytes")
 var Sleep = flag.Duration("s", 10*time.Second, "sleep time in seconds")
 var Inter = flag.String("i", "*", "interface")
 var Stats = flag.Bool("S", false, "runtime stats for debugging")
+var B = flag.Bool("B", false, "switch to using bytes, default is bits")
 
 type NetStat struct {
 	Dev  []string
@@ -26,8 +27,8 @@ type DevStat struct {
 	Name    string
 	Rx      uint64
 	Tx      uint64
-	RByteps uint64
-	TByteps uint64
+	RByteps float64
+	TByteps float64
 }
 
 func ReadLines(filename string) ([]string, error) {
@@ -117,8 +118,8 @@ func main() {
 			t1, ok := stat1.Stat[value]
 			dev.Rx = t1.Rx - t0.Rx
 			dev.Tx = t1.Tx - t0.Tx
-			dev.RByteps = uint64(float64(dev.Rx) / sleepfloat)
-			dev.TByteps = uint64(float64(dev.Tx) / sleepfloat)
+			dev.RByteps = float64(dev.Rx) / sleepfloat
+			dev.TByteps = float64(dev.Tx) / sleepfloat
 		}
 	}
 
@@ -154,9 +155,9 @@ func main() {
 	for k, iface := range delta.Dev {
 		stat := delta.Stat[iface]
 		if k == totaldevs {
-			fmt.Printf("%v_Rx=%vB/s;%v;%v;; %v_Tx=%vB/s;%v;%v;;", iface, stat.RByteps, *W, *C, iface, stat.TByteps, *W, *C)
+			fmt.Printf("%v_Rx=%.2fB/s;%v;%v;; %v_Tx=%.2fB/s;%v;%v;;", iface, stat.RByteps, *W, *C, iface, stat.TByteps, *W, *C)
 		} else {
-			fmt.Printf("%v_Rx=%vB/s;%v;%v;; %v_Tx=%vB/s;%v;%v;; ", iface, stat.RByteps, *W, *C, iface, stat.TByteps, *W, *C)
+			fmt.Printf("%v_Rx=%.2fB/s;%v;%v;; %v_Tx=%.2fB/s;%v;%v;; ", iface, stat.RByteps, *W, *C, iface, stat.TByteps, *W, *C)
 		}
 	}
 
@@ -176,31 +177,40 @@ func main() {
 }
 
 func Vsize(bytes uint64, delta float64) (ret string) {
-	var tmp float64 = float64(bytes) / delta
+	var tmp float64
+	var suffix string
+	if *B {
+		tmp = float64(bytes) / delta
+		suffix = "Byte"
+	} else {
+		tmp = float64(bytes*8) / delta
+		suffix = "bit"
+	}
+
 	var s string
 
-	bytes = uint64(tmp)
+	b := uint64(tmp)
 
 	switch {
-	case bytes < uint64(2<<9):
+	case b < uint64(2<<9):
 
-	case bytes < uint64(2<<19):
+	case b < uint64(2<<19):
 		tmp = tmp / float64(2<<9)
 		s = "K"
 
-	case bytes < uint64(2<<29):
+	case b < uint64(2<<29):
 		tmp = tmp / float64(2<<19)
 		s = "M"
 
-	case bytes < uint64(2<<39):
+	case b < uint64(2<<39):
 		tmp = tmp / float64(2<<29)
 		s = "G"
 
-	case bytes < uint64(2<<49):
+	case b < uint64(2<<49):
 		tmp = tmp / float64(2<<39)
 		s = "T"
 
 	}
-	ret = fmt.Sprintf("%.2f%sByte/s", tmp, s)
+	ret = fmt.Sprintf("%.2f%s%s/s", tmp, s, suffix)
 	return
 }
