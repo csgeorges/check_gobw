@@ -1,6 +1,8 @@
 package main
 
 import (
+	"check_gobw/config"
+
 	"flag"
 	"fmt"
 	"math"
@@ -18,6 +20,7 @@ var Sleep = flag.Duration("s", 10*time.Second, "sleep time in seconds")
 var Inter = flag.String("i", "*", "interface")
 var Stats = flag.Bool("S", false, "runtime stats for debugging")
 var B = flag.Bool("B", false, "switch to using bytes, default is bits")
+var Version = flag.Bool("v", false, "version information")
 
 type NetStat struct {
 	Dev  []string
@@ -104,6 +107,12 @@ func getStats() (ret NetStat) {
 
 func main() {
 	flag.Parse()
+
+	if *Version {
+		exitcode := 0
+		fmt.Printf("%10s: %s\n%10s: %s\n%10s: %s\n", "VERSION", config.VERSION, "GITHASH", config.GITHASH, "BUILD DATE", config.BUILDSTAMP)
+		os.Exit(exitcode)
+	}
 
 	var stat0 NetStat
 	var stat1 NetStat
