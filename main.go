@@ -35,6 +35,9 @@ type DevStat struct {
 func ReadLines(filename string) ([]string, error) {
 	f, err := os.Open(filename)
 	if err != nil {
+		if *Stats {
+			fmt.Printf("Error: %v\n", err)
+		}
 		return []string{""}, err
 	}
 	defer f.Close()
@@ -67,6 +70,15 @@ func getStats() (ret NetStat) {
 		value := strings.Fields(strings.TrimSpace(fields[1]))
 		if *Inter != "*" && *Inter != key {
 			continue
+		}
+
+		if key == "lo" {
+			continue
+		}
+
+		if *Stats {
+			fmt.Printf("%10s: %v\n", "Interface", key)
+			fmt.Printf("%10s: %v\n", "Stats", value)
 		}
 
 		c := new(DevStat)
@@ -124,10 +136,16 @@ func main() {
 		}
 	}
 
-	totaldevs := len(delta.Dev) - 1
-
 	status := "OK"
 	exitcode := 0
+	totaldevs := len(delta.Dev) - 1
+	if totaldevs+1 == 0 {
+		status = "UNKNOWN"
+		exitcode = 3
+		fmt.Printf("BANDWIDTH %v: Unable to determine network interfaces.\n", status)
+		os.Exit(exitcode)
+	}
+
 	for _, iface := range delta.Dev {
 		stat := delta.Stat[iface]
 		if int(stat.RByteps) > *C || int(stat.TByteps) > *C {
