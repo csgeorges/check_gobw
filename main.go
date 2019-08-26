@@ -89,10 +89,17 @@ func getStats() (ret NetStat) {
 		c.Name = key
 
 		speedfile := fmt.Sprintf("/sys/class/net/%v/speed", key)
-		tempspeed, _ := ReadLines(speedfile)
-		tempspeedint, _ := strconv.Atoi(tempspeed[0])
-
-		c.Speed = tempspeedint * 1000000
+		if _, err := os.Stat(speedfile); err == nil {
+			tempspeed, _ := ReadLines(speedfile)
+			if len(tempspeed) != 0 {
+				tempspeedint, _ := strconv.Atoi(tempspeed[0])
+				c.Speed = tempspeedint * 1000000
+			} else {
+				c.Speed = 0
+			}
+		} else if os.IsNotExist(err) {
+			c.Speed = 0
+		}
 
 		if *Stats {
 			fmt.Printf("%10s: %v\n", "Speedfile", speedfile)
@@ -203,9 +210,9 @@ func main() {
 		critical := (*C * stat.Speed) / 100
 
 		if k == totaldevs {
-			fmt.Printf("%v_Rx=%.2fB/s;%v;%v;; %v_Tx=%.2fB/s;%v;%v;;", iface, stat.RBitps, warning, critical, iface, stat.TBitps, warning, critical)
+			fmt.Printf("%v_Rx=%.2f;%v;%v;; %v_Tx=%.2f;%v;%v;;", iface, stat.RBitps, warning, critical, iface, stat.TBitps, warning, critical)
 		} else {
-			fmt.Printf("%v_Rx=%.2fB/s;%v;%v;; %v_Tx=%.2fB/s;%v;%v;; ", iface, stat.RBitps, warning, critical, iface, stat.TBitps, warning, critical)
+			fmt.Printf("%v_Rx=%.2f;%v;%v;; %v_Tx=%.2f;%v;%v;; ", iface, stat.RBitps, warning, critical, iface, stat.TBitps, warning, critical)
 		}
 	}
 
