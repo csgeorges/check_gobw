@@ -22,6 +22,8 @@ var Stats = flag.Bool("S", false, "runtime stats for debugging")
 var B = flag.Bool("B", false, "switch to using bytes, default is bits")
 var Version = flag.Bool("v", false, "version information")
 
+var TempSpeed int
+
 type NetStat struct {
 	Dev  []string
 	Stat map[string]*DevStat
@@ -85,21 +87,22 @@ func getStats() (ret NetStat) {
 			fmt.Printf("%10s: %v\n", "Stats", value)
 		}
 
-		c := new(DevStat)
-		c.Name = key
-
 		speedfile := fmt.Sprintf("/sys/class/net/%v/speed", key)
 		if _, err := os.Stat(speedfile); err == nil {
 			tempspeed, _ := ReadLines(speedfile)
 			if len(tempspeed) != 0 {
 				tempspeedint, _ := strconv.Atoi(tempspeed[0])
-				c.Speed = tempspeedint * 1000000
+				TempSpeed = tempspeedint * 1000000
 			} else {
-				c.Speed = 0
+				continue
 			}
 		} else if os.IsNotExist(err) {
-			c.Speed = 0
+			continue
 		}
+
+		c := new(DevStat)
+		c.Name = key
+		c.Speed = TempSpeed
 
 		if *Stats {
 			fmt.Printf("%10s: %v\n", "Speedfile", speedfile)
