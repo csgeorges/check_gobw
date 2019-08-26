@@ -14,13 +14,14 @@ Usage of ./check_gobw:
   -B    switch to using bytes, default is bits
   -S    runtime stats for debugging
   -c int
-        critical limit in bytes (default 10000000)
+        critical limit as percentage (default 100)
   -i string
         interface (default "*")
   -s duration
         sleep time in seconds (default 10s)
+  -v    version information
   -w int
-        warning limit in bytes (default 5000000)
+        warning limit as percentage (default 50)
 ```
 
 ## Todo
