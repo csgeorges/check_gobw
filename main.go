@@ -14,8 +14,8 @@ import (
 	"strings"
 )
 
-var W = flag.Int("w", 50, "warning limit as percentage")
-var C = flag.Int("c", 100, "critical limit as percentage")
+var W = flag.Float64("w", 50, "warning limit as percentage")
+var C = flag.Float64("c", 100, "critical limit as percentage")
 var Sleep = flag.Duration("s", 10*time.Second, "sleep time in seconds")
 var Inter = flag.String("i", "*", "interface")
 var Stats = flag.Bool("S", false, "runtime stats for debugging")
@@ -93,6 +93,9 @@ func getStats() (ret NetStat) {
 			if len(tempspeed) != 0 {
 				tempspeedint, _ := strconv.Atoi(tempspeed[0])
 				TempSpeed = tempspeedint * 1000000
+				if math.Signbit(float64(TempSpeed)) {
+					continue
+				}
 			} else {
 				continue
 			}
@@ -181,13 +184,13 @@ func main() {
 	for _, iface := range delta.Dev {
 		stat := delta.Stat[iface]
 		// calculate the percentage of the interface
-		warning := (*W * stat.Speed) / 100
-		critical := (*C * stat.Speed) / 100
+		warning := (*W * float64(stat.Speed)) / 100
+		critical := (*C * float64(stat.Speed)) / 100
 
-		if int(stat.RBitps) > critical || int(stat.TBitps) > critical {
+		if stat.RBitps > critical || stat.TBitps > critical {
 			status = "CRITICAL"
 			exitcode = 2
-		} else if int(stat.RBitps) > warning || int(stat.TBitps) > warning {
+		} else if stat.RBitps > warning || stat.TBitps > warning {
 			if status == "OK" {
 				status = "WARNING"
 				exitcode = 1
@@ -209,13 +212,13 @@ func main() {
 
 	for k, iface := range delta.Dev {
 		stat := delta.Stat[iface]
-		warning := (*W * stat.Speed) / 100
-		critical := (*C * stat.Speed) / 100
+		warning := (*W * float64(stat.Speed)) / 100.0
+		critical := (*C * float64(stat.Speed)) / 100.0
 
 		if k == totaldevs {
-			fmt.Printf("%v_Rx=%.2f;%v;%v;; %v_Tx=%.2f;%v;%v;;", iface, stat.RBitps, warning, critical, iface, stat.TBitps, warning, critical)
+			fmt.Printf("%v_Rx=%.2f;%.0f;%.0f;; %v_Tx=%.2f;%.0f;%.0f;;", iface, stat.RBitps, warning, critical, iface, stat.TBitps, warning, critical)
 		} else {
-			fmt.Printf("%v_Rx=%.2f;%v;%v;; %v_Tx=%.2f;%v;%v;; ", iface, stat.RBitps, warning, critical, iface, stat.TBitps, warning, critical)
+			fmt.Printf("%v_Rx=%.2f;%.0f;%.0f;; %v_Tx=%.2f;%.0f;%.0f;; ", iface, stat.RBitps, warning, critical, iface, stat.TBitps, warning, critical)
 		}
 	}
 
@@ -230,6 +233,7 @@ func main() {
 		fmt.Printf("%10s: %v\n", "Sleep", *Sleep)
 		fmt.Printf("%10s: %v\n", "Overhead", overhead)
 		fmt.Printf("%10s: %v\n", "Devices", totaldevs+1)
+		fmt.Printf("%10s: %v\n", "Exit Code", exitcode)
 	}
 	os.Exit(exitcode)
 }
